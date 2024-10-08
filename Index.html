@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Train Seat Reservation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5; /* Light background color */
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #0044cc; /* Blue color for header */
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .input-section {
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            width: 50px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #28a745; /* Green button */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .seats-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-gap: 10px;
+            max-width: 700px;
+        }
+        .seat {
+            padding: 15px;
+            background-color: #ddd;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .booked {
+            background-color: #e74c3c; /* Red for booked seats */
+            color: white;
+        }
+        .available {
+            background-color: #2ecc71; /* Green for available seats */
+            color: white;
+        }
+        .reserved {
+            background-color: #f39c12; /* Yellow for selected seats */
+            color: white;
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Train Seat Reservation</h1>
+    <div class="container">
+        <div class="input-section">
+            <label for="seatNumber">Enter number of seats to book (1-7): </label>
+            <input type="text" id="seatNumber" maxlength="1" value="1">
+            <button onclick="bookSeats()">Book Seats</button>
+        </div>
+
+        <div id="bookedSeats">Booked Seats: 3, 4, 5, 6, 8</div>
+        
+        <div class="seats-grid" id="seatsGrid">
+            <!-- JavaScript will populate the seats here -->
+        </div>
+
+        <div class="footer">
+            <p>Seats status: <span class="available">Available</span>, <span class="booked">Booked</span>, <span class="reserved">Reserved</span></p>
+        </div>
+    </div>
+
+    <script>
+        // Pre-defined booked seats
+        const bookedSeats = [3, 4, 5, 6, 8];
+        const totalSeats = 80;
+        const rows = 7;
+        const lastRowSeats = 3;
+
+        function createSeatsGrid() {
+            const seatsGrid = document.getElementById('seatsGrid');
+            seatsGrid.innerHTML = '';
+
+            for (let i = 1; i <= totalSeats; i++) {
+                const seatDiv = document.createElement('div');
+                seatDiv.classList.add('seat');
+                seatDiv.textContent = i;
+
+                if (bookedSeats.includes(i)) {
+                    seatDiv.classList.add('booked');
+                } else {
+                    seatDiv.classList.add('available');
+                    seatDiv.onclick = function () {
+                        reserveSeat(seatDiv);
+                    };
+                }
+
+                seatsGrid.appendChild(seatDiv);
+            }
+        }
+
+        function reserveSeat(seatDiv) {
+            if (seatDiv.classList.contains('available')) {
+                seatDiv.classList.remove('available');
+                seatDiv.classList.add('reserved');
+            } else if (seatDiv.classList.contains('reserved')) {
+                seatDiv.classList.remove('reserved');
+                seatDiv.classList.add('available');
+            }
+        }
+
+        // Function to book seats by giving priority to one row first
+        function bookSeats() {
+            const seatNumberInput = document.getElementById('seatNumber').value;
+            const seatCount = parseInt(seatNumberInput);
+
+            if (isNaN(seatCount) || seatCount < 1 || seatCount > 7) {
+                alert('Please enter a number between 1 and 7.');
+                return;
+            }
+
+            // Get all available seats in a row-wise manner
+            const availableSeats = document.querySelectorAll('.available');
+            const seatPositions = Array.from(availableSeats).map(seat => parseInt(seat.textContent));
+
+            const foundSeats = findSeatsInRow(seatCount, seatPositions);
+
+            if (foundSeats.length === 0) {
+                alert(`Unable to find ${seatCount} consecutive seats in one row. Please try again.`);
+                return;
+            }
+
+            // Mark found seats as booked
+            foundSeats.forEach(seatNum => {
+                const seatDiv = document.querySelector(`.seat:nth-child(${seatNum})`);
+                seatDiv.classList.remove('reserved', 'available');
+                seatDiv.classList.add('booked');
+                bookedSeats.push(seatNum);
+            });
+
+            createSeatsGrid(); // Refresh seat grid
+            alert(`Successfully booked ${seatCount} seat(s)!`);
+        }
+
+        // Function to find seats in one row first, then nearby if necessary
+        function findSeatsInRow(seatCount, seatPositions) {
+            const seatMap = [];
+            const nearbySeats = [];
+
+            // Create a seat map for each row
+            for (let row = 0; row < totalSeats / rows; row++) {
+                const start = row * rows + 1;
+                const end = (row + 1) * rows;
+
+                const rowSeats = seatPositions.filter(seat => seat >= start && seat <= end);
+                if (rowSeats.length >= seatCount) {
+                    // If a row has enough seats, return them
+                    return rowSeats.slice(0, seatCount);
+                } else {
+                    // Collect nearby seats if needed later
+                    nearbySeats.push(...rowSeats);
+                }
+            }
+
+            // Handle the last row separately (only 3 seats)
+            const lastRowStart = totalSeats - lastRowSeats + 1;
+            const lastRowSeatsAvailable = seatPositions.filter(seat => seat >= lastRowStart && seat <= totalSeats);
+
+            if (lastRowSeatsAvailable.length >= seatCount) {
+                return lastRowSeatsAvailable.slice(0, seatCount);
+            } else if (nearbySeats.length > 0) {
+                // If nearby seats need to be used, return them
+                return nearbySeats.slice(0, seatCount);
+            }
+
+            return []; // No seats found
+        }
+
+        // Initialize seats grid
+        createSeatsGrid();
+    </script>
+
+</body>
+</html>
